@@ -93,19 +93,29 @@ graph TD
 ### Database Schema
 
 ```sql
-CREATE TABLE images (
+CREATE TABLE IF NOT EXISTS images (
     id SERIAL PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL,
-    original_path VARCHAR(500) NOT NULL,
-    thumbnail_path VARCHAR(500),
-    file_size INTEGER,
-    thumbnail_size INTEGER,
-    status VARCHAR(20) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    processed_at TIMESTAMP
+    
+    -- File information
+    original_filename VARCHAR(255) NOT NULL,
+    stored_filename VARCHAR(255) NOT NULL UNIQUE,  
+    file_size INTEGER NOT NULL,      
+    mime_type VARCHAR(50) NOT NULL, 
+    -- Processing status
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    error_message TEXT, 
+    
+    thumbnail_filename VARCHAR(255),            
+    thumbnail_size INTEGER,    
+    
+    -- Timestamps
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processing_started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    
+    -- Constraints
+    CONSTRAINT valid_status CHECK (status IN ('pending', 'processing', 'completed', 'failed'))
 );
-
--- Status values: 'pending', 'processing', 'completed', 'failed'
 ```
 
 ## 🔧 API Endpoints
@@ -125,40 +135,28 @@ Content-Type: multipart/form-data
 
 ```json
 {
-  "id": 123,
-  "filename": "image.jpg",
-  "status": "pending",
-  "message": "Image uploaded successfully"
+    "id": 1,
+    "filename": "abc.png",
+    "status": "pending",
+    "message": "Image uploaded successfully. Waiting for further proccessing..."
 }
 ```
 
-### Check Status
+### Health check
 
 ```http
-GET /api/images/:id
+GET /health
 ```
 
 **Response:**
 
 ```json
 {
-  "id": 123,
-  "filename": "image.jpg",
-  "status": "completed",
-  "original_path": "/uploads/image.jpg",
-  "thumbnail_path": "/thumbnails/image_thumb.jpg",
-  "created_at": "2024-01-01T10:00:00Z",
-  "processed_at": "2024-01-01T10:00:05Z"
+    "backend": "ok",
+    "database": "ok",
+    "messageQueue": "ok"
 }
 ```
-
-### Get Thumbnail
-
-```http
-GET /api/thumbnails/:id
-```
-
-Returns the processed thumbnail image.
 
 ## 🔌 RabbitMQ Integration
 
@@ -167,30 +165,21 @@ Returns the processed thumbnail image.
 ```javascript
 // Publisher (API Service)
 const message = {
-  imageId: 123,
-  originalPath: '/uploads/image.jpg',
-  thumbnailPath: '/thumbnails/image_thumb.jpg'
-};
+  imageId,
+  originalPath,
+  thumbnailPath,
+  storedFilename,
+}
 
-channel.sendToQueue('image_processing', Buffer.from(JSON.stringify(message)), {
+channel.sendToQueue('thumbnail_processing', Buffer.from(JSON.stringify(message)), {
   persistent: true
 });
 ```
 
 ### Consumer (Worker Service)
 
-```javascript
-channel.consume('image_processing', async (msg) => {
-  const { imageId, originalPath, thumbnailPath } = JSON.parse(msg.content.toString());
-  
-  try {
-    await processImage(imageId, originalPath, thumbnailPath);
-    channel.ack(msg);
-  } catch (error) {
-    console.error('Processing failed:', error);
-    channel.nack(msg, false, true); // Requeue on failure
-  }
-});
+```python
+updating
 ```
 
 ## 🎯 Learning Objectives
@@ -211,24 +200,6 @@ This project helps you understand:
 - Access: <http://localhost:15672>
 - Monitor queues, exchanges, and message rates
 - View message details and consumer activity
-
-### Database Monitoring
-
-```sql
--- Check processing status distribution
-SELECT status, COUNT(*) FROM images GROUP BY status;
-
--- View recent uploads
-SELECT * FROM images ORDER BY created_at DESC LIMIT 10;
-
--- Check processing times
-SELECT 
-  filename, 
-  status,
-  EXTRACT(EPOCH FROM (processed_at - created_at)) as processing_seconds
-FROM images 
-WHERE processed_at IS NOT NULL;
-```
 
 ## 🚀 Scaling Considerations
 
@@ -268,18 +239,6 @@ WHERE processed_at IS NOT NULL;
 
 ## 🔮 Future Enhancements
 
-- [ ] Add image format conversion (JPEG, PNG, WebP)
-- [ ] Implement different thumbnail sizes
-- [ ] Add image metadata extraction
-- [ ] Implement dead letter queue for failed jobs
-- [ ] Add WebSocket real-time status updates
-- [ ] Create admin dashboard for queue monitoring
-- [ ] Add image optimization based on device type
-- [ ] Implement batch processing capabilities
+- [ ] A web front-end client, with real-time status updates
 
 ## 📚 Additional Resources
-
-- [RabbitMQ Tutorial](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html)
-- [Docker Compose Documentation](https://docs.docker.com/compose/)
-- [PostgreSQL Docker Guide](https://hub.docker.com/_/postgres)
-- [Image Processing Best Practices](https://web.dev/fast/#optimize-your-images)
