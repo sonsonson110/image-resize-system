@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs/promises");
+const cors = require("cors");
 require("dotenv").config();
 
 const { connectDB, pool } = require("./config/database.js");
@@ -11,6 +12,11 @@ const {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

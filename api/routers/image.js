@@ -93,10 +93,9 @@ router.post(
 
       res.status(201).json({
         id: imageId,
-        uploadedFilename: originalname,
+        originalFilename: originalname,
         source: `${HOST}/image/${filename}`,
-        message:
-          "Image uploaded successfully. Waiting for further proccessing...",
+        uploadedAt: new Date().toISOString()
       });
     } catch (err) {
       console.error("Upload error:", err);
@@ -117,7 +116,13 @@ router.get("/list", async (req, res) => {
       ORDER BY uploadedAt DESC
     `, [HOST]);
     res.status(200).json({
-      data: result.rows,
+      data: result.rows.map(e => ({
+        id: e.id,
+        originalFilename: e.originalfilename,
+        source: e.source,
+        thumbnail: e.thumbnail,
+        uploadedAt: e.uploadedat
+      })),
     });
   } catch (err) {
     console.error("Database error:", err);
