@@ -34,7 +34,7 @@ def callback(ch, method, properties, body):
                 cur.execute("""
                     UPDATE images
                     SET status = 'processing',
-                        processing_started_at = %s
+                        processingStartedAt = %s
                     WHERE id = %s
                 """, (datetime.now(), image_id))
         
@@ -48,9 +48,9 @@ def callback(ch, method, properties, body):
                 cur.execute("""
                     UPDATE images
                     SET status = 'completed',
-                        completed_at = %s,
-                        thumbnail_filename = %s,
-                        thumbnail_size = %s
+                        completedAt = %s,
+                        thumbnailFilename = %s,
+                        thumbnailSize = %s
                     WHERE id = %s
                 """, (datetime.now(), thumbnailFilename, file_size, image_id))
         
@@ -65,8 +65,8 @@ def callback(ch, method, properties, body):
                 cur.execute("""
                     UPDATE images
                     SET status = 'failed',
-                        error_message = %s,
-                        completed_at = %s
+                        errorMessage = %s,
+                        completedAt = %s
                     WHERE id = %s
                 """, (str(e), datetime.now(), originalFilename, image_id))
 

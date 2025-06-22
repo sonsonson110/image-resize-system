@@ -6,6 +6,7 @@ const { publishJob } = require("../config/message-queue.js");
 const { pool } = require("../config/database.js");
 
 const UPLOADS_ROOT = process.env.UPLOADS_ROOT || "../uploads";
+const HOST = process.env.HOST || "http://localhost:3000";
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -65,7 +66,7 @@ router.post(
       // Insert into database
       const result = await pool.query(
         `INSERT INTO images
-        (original_filename, stored_filename, file_size, mime_type)
+        (originalFilename, storedFilename, fileSize, mimeType)
        VALUES ($1, $2, $3, $4)
        RETURNING id`,
         [originalname, filename, size, mimetype]
@@ -104,6 +105,26 @@ router.post(
   }
 );
 
+router.get("/list", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id, originalFilename, 
+        CONCAT($1::text,'/image/',storedFilename) AS source, 
+        CONCAT($1::text,'/thumbnail/',thumbnailFilename) AS thumbnail,
+        uploadedAt
+      FROM images
+      ORDER BY uploadedAt DESC
+    `, [HOST]);
+    res.status(200).json({
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).json({ detail: "Internal server error" });
+  }
+});
+
 router.get("/:filename", async (req, res) => {
   const { filename } = req.params;
 
@@ -115,14 +136,14 @@ router.get("/:filename", async (req, res) => {
   try {
     // Check for the stored file name
     const query =
-      "SELECT original_filename FROM images WHERE stored_filename = $1 LIMIT 1";
+      "SELECT originalFilename FROM images WHERE storedFilename = $1 LIMIT 1";
     const result = await pool.query(query, [filename]);
     if (result.rows.length === 0) {
       return res.status(404).json({ detail: "File not found in database" });
     }
-    const originalFilename = result.rows[0].original_filename;
+    const originalFilename = result.rows[0].originalFilename;
     const filePath = path.join("originals", filename);
-    
+
     res.download(
       path.resolve(UPLOADS_ROOT, filePath),
       originalFilename,
