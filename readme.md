@@ -94,34 +94,6 @@ graph TD
    - Updates database record to `completed`
 5. **Frontend** polls API or receives WebSocket update for status
 
-### Database Schema
-
-```sql
-CREATE TABLE IF NOT EXISTS images (
-    id SERIAL PRIMARY KEY,
-    
-    -- File information
-    original_filename VARCHAR(255) NOT NULL,
-    stored_filename VARCHAR(255) NOT NULL UNIQUE,  
-    file_size INTEGER NOT NULL,      
-    mime_type VARCHAR(50) NOT NULL, 
-    -- Processing status
-    status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    error_message TEXT, 
-    
-    thumbnail_filename VARCHAR(255),            
-    thumbnail_size INTEGER,    
-    
-    -- Timestamps
-    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    processing_started_at TIMESTAMP,
-    completed_at TIMESTAMP,
-    
-    -- Constraints
-    CONSTRAINT valid_status CHECK (status IN ('pending', 'processing', 'completed', 'failed'))
-);
-```
-
 ## 🔧 API Endpoints
 
 ### Image
@@ -143,20 +115,42 @@ Content-Type: multipart/form-data
 {
     "id": 1,
     "uploadedFilename": "example.jpg",
-    "storedFilename": "example0.jpg",
+    "source": "http://domain.example/api/image/example0.jpg",
     "message": "Image uploaded successfully. Waiting for further proccessing..."
 }
 ```
 
-#### Get
+#### Get one image
 
 ```http
 GET /api/image/:filename
 ```
 
+#### Get image list
+
+```http
+GET /api/image/list
+```
+
+**Response:**
+
+```json
+{
+    "data": [
+        {
+            "id": 3,
+            "originalfilename": "SNF08720.jpg",
+            "source": "http://localhost:3000/api/image/fe896b9f-ce5f-481b-a01e-ae0d7a3c79f7.jpg",
+            "thumbnail": "http://localhost:3000/api/thumbnail/thumb_fe896b9f-ce5f-481b-a01e-ae0d7a3c79f7.jpg",
+            "uploadedat": "2025-06-22T01:36:40.528Z"
+        },
+    ]
+}
+```
+
 ### Thumbnail
 
-#### Get
+#### Get one thumbnail
 
 ```http
 GET /api/thumbnail/:filename

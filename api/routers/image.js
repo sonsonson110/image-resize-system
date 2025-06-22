@@ -6,7 +6,7 @@ const { publishJob } = require("../config/message-queue.js");
 const { pool } = require("../config/database.js");
 
 const UPLOADS_ROOT = process.env.UPLOADS_ROOT || "../uploads";
-const HOST = process.env.HOST || "http://localhost:3000";
+const HOST = process.env.HOST || "http://localhost:3000/api";
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -94,7 +94,7 @@ router.post(
       res.status(201).json({
         id: imageId,
         uploadedFilename: originalname,
-        storedFilename: filename,
+        source: `${HOST}/image/${filename}`,
         message:
           "Image uploaded successfully. Waiting for further proccessing...",
       });
