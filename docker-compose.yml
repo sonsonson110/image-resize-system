@@ -3,15 +3,70 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
-      - 5672:5672  # AMQP
-      - 15672:15672 # Management UI
+      - "15672:15672"  # RabbitMQ Management UI
+      - "5672:5672"    # RabbitMQ AMQP protocol
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   postgres:
     image: postgres:17.4-alpine3.21
     ports:
-      - 5432:5432
+      - "5432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: image_resize_system
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      UPLOAD_DIR: /uploads
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      DATABASE_URL: postgres://postgres:password@postgres:5432/image_resize_system
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/uploads
+    restart: on-failure
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      DB_CONFIG_HOST: postgres
+      DB_CONFIG_PORT: 5432
+      DB_CONFIG_DBNAME: image_resize_system
+      DB_CONFIG_USER: postgres
+      DB_CONFIG_PASSWORD: password
+    volumes:
+      - ./uploads:/uploads
+    restart: on-failure
+
+volumes:
+  postgres_data:

@@ -67,9 +67,13 @@ graph TD
 
 ## 📋 Prerequisites
 
-- Docker and Docker Compose installed
-- Basic understanding of message queues
-- Familiarity with your chosen programming language (Node.js)
+- Docker and Docker Compose installed is enough to spin up application
+
+### Local development
+
+- OS: Ubuntu 24.04
+- Python: 3.9.23
+- Nodejs: 22.14.0
 
 ## 🔄 System Flow
 
@@ -120,7 +124,9 @@ CREATE TABLE IF NOT EXISTS images (
 
 ## 🔧 API Endpoints
 
-### Upload Image
+### Image
+
+#### Upload
 
 ```http
 POST /api/upload
@@ -136,13 +142,29 @@ Content-Type: multipart/form-data
 ```json
 {
     "id": 1,
-    "filename": "abc.png",
-    "status": "pending",
+    "uploadedFilename": "example.jpg",
+    "storedFilename": "example0.jpg",
     "message": "Image uploaded successfully. Waiting for further proccessing..."
 }
 ```
 
-### Health check
+#### Get
+
+```http
+GET /api/images/:filename
+```
+
+### Thumbnail
+
+#### Get
+
+```http
+GET /api/thumbnails/:filename
+```
+
+### Other
+
+#### Health check
 
 ```http
 GET /health
@@ -158,6 +180,12 @@ GET /health
 }
 ```
 
+#### Clear images and queue
+
+```http
+DELETE /reset
+```
+
 ## 🔌 RabbitMQ Integration
 
 ### Queue Configuration
@@ -167,19 +195,14 @@ GET /health
 const message = {
   imageId,
   originalPath,
+  originalFilename
   thumbnailPath,
-  storedFilename,
+  thumbnailFilename,
 }
 
 channel.sendToQueue('thumbnail_processing', Buffer.from(JSON.stringify(message)), {
   persistent: true
 });
-```
-
-### Consumer (Worker Service)
-
-```python
-updating
 ```
 
 ## 🎯 Learning Objectives
@@ -200,42 +223,6 @@ This project helps you understand:
 - Access: <http://localhost:15672>
 - Monitor queues, exchanges, and message rates
 - View message details and consumer activity
-
-## 🚀 Scaling Considerations
-
-### Horizontal Scaling
-
-- Run multiple worker instances: `docker-compose up --scale worker-service=3`
-- Each worker competes for messages in the queue
-- RabbitMQ automatically load balances
-
-### Performance Optimization
-
-- Adjust worker concurrency based on CPU/memory
-- Implement message prefetch limits
-- Use appropriate image processing libraries (Sharp for Node.js, Pillow for Python)
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Images stuck in 'processing' status:**
-
-- Check worker service logs: `docker-compose logs worker-service`
-- Verify RabbitMQ connectivity
-- Ensure shared volume permissions
-
-**High memory usage:**
-
-- Reduce worker concurrency
-- Implement image size limits
-- Add memory limits to Docker containers
-
-**Queue buildup:**
-
-- Scale worker services
-- Check for processing errors
-- Monitor disk space for image storage
 
 ## 🔮 Future Enhancements
 
