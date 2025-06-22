@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS images (
 #### Upload
 
 ```http
-POST /api/upload
+POST /api/image
 Content-Type: multipart/form-data
 
 {
@@ -151,7 +151,7 @@ Content-Type: multipart/form-data
 #### Get
 
 ```http
-GET /api/images/:filename
+GET /api/image/:filename
 ```
 
 ### Thumbnail
@@ -159,7 +159,7 @@ GET /api/images/:filename
 #### Get
 
 ```http
-GET /api/thumbnails/:filename
+GET /api/thumbnail/:filename
 ```
 
 ### Other

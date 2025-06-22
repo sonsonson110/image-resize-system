@@ -15,9 +15,8 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api/upload", require("./routers/upload.js"));
-app.use("/api/images", require("./routers/image.js"));
-app.use("/api/thumbnails", require("./routers/thumbnail.js"));
+app.use("/api/image", require("./routers/image.js"));
+app.use("/api/thumbnail", require("./routers/thumbnail.js"));
 
 app.get("/health", async (req, res) => {
   const databaseStatus = await connectDB();
