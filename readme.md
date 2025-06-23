@@ -17,9 +17,12 @@ graph TD
         end
         
         subgraph "Infrastructure Layer"
-            RabbitMQ[RabbitMQ<br/>Message Queue<br/>]
-            PostgreSQL[PostgreSQL<br/>Database<br/>]
-            FileSystem[File System<br/>Shared Volume<br/>]
+            subgraph "RabbitMQ Message Broker"
+                ThumbnailProcessing[thumbnail_processing<br/>Queue]
+                ThumbnailCompleted[thumbnail_completed<br/>Queue]
+            end
+            PostgreSQL[PostgreSQL<br/>Database]
+            FileSystem[File System<br/>Shared Volume]
         end
     end
     
@@ -27,12 +30,14 @@ graph TD
     Frontend -.->|HTTP/WebSocket<br/>Upload & Status| API
     
     %% API Service connections
-    API -->|Publish Messages<br/>Image Processing Jobs| RabbitMQ
+    API -->|Publish<br/>Processing Jobs| ThumbnailProcessing
+    API -->|Consume<br/>Completion Events| ThumbnailCompleted
     API <-->|Read/Write<br/>Image Records| PostgreSQL
     API <-->|Store Original<br/>Images| FileSystem
     
     %% Worker Service connections
-    Worker -->|Consume Messages<br/>Process Jobs| RabbitMQ
+    Worker -->|Consume<br/>Processing Jobs| ThumbnailProcessing
+    Worker -->|Publish<br/>Completion Events| ThumbnailCompleted
     Worker <-->|Update Status<br/>Image Records| PostgreSQL
     Worker <-->|Read Original<br/>Write Thumbnails| FileSystem
     
@@ -40,10 +45,12 @@ graph TD
     classDef frontend fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef service fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef infrastructure fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef queue fill:#fff3e0,stroke:#e65100,stroke-width:2px
     
     class Frontend frontend
     class API,Worker service
-    class RabbitMQ,PostgreSQL,FileSystem infrastructure
+    class PostgreSQL,FileSystem infrastructure
+    class ThumbnailProcessing,ThumbnailCompleted queue
 ```
 
 ## 🚀 Features
@@ -187,17 +194,22 @@ DELETE /reset
 
 ```javascript
 // Publisher (API Service)
+// queue name: thumbnail_processing
 const message = {
   imageId,
   originalPath,
-  originalFilename
   thumbnailPath,
   thumbnailFilename,
 }
+```
 
-channel.sendToQueue('thumbnail_processing', Buffer.from(JSON.stringify(message)), {
-  persistent: true
-});
+```python
+# Publisher (Worker Service)
+# queue name: thumbnail_completed
+complete_notification = {
+    "id": id,
+    "thumbnailFilename": thumbnailFilename,
+}
 ```
 
 ## 🎯 Learning Objectives
@@ -221,6 +233,6 @@ This project helps you understand:
 
 ## 🔮 Future Enhancements
 
-- [ ] A web front-end client, with real-time status updates
+- [x] A web front-end client, with real-time status updates
 
 ## 📚 Additional Resources
