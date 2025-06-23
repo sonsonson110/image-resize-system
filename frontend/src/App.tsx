@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { imageApi } from "./api/imageApi";
 import { systemApi } from "./api/systemApi";
-import type { ImageListItem } from "./type/imageItem";
 import socket from "./lib/socket";
+import type { ImageListItem } from "./type/imageItem";
+import type { ThumbnailCompletedPayload } from "./type/thumbnailCompletedPayload";
 
 const placeholder = "https://placehold.co/128x128";
 
@@ -16,11 +17,32 @@ function App() {
     setImages(repponse);
   };
 
+  const handleThumbnailCompleted = useCallback(
+    (payload: ThumbnailCompletedPayload) => {
+      setTimeout(() => {
+        setImages((currentImages) =>
+          currentImages.map((img) => {
+            if (img.id === payload.id) {
+              return {
+                ...img,
+                thumbnail: payload.thumbnail,
+              };
+            }
+            return img;
+          })
+        );
+      }, 1000);
+    },
+    []
+  );
+
   useEffect(() => {
-    socket.on("connect", () => {
-      console.log("Socket connected");
-    });
-  });
+    socket.on("thumbnail:completed", handleThumbnailCompleted);
+
+    return () => {
+      socket.off("thumbnail:completed");
+    };
+  }, [handleThumbnailCompleted]);
 
   useEffect(() => {
     fetchImages();
@@ -98,7 +120,7 @@ function App() {
         <h2 className="text-lg font-medium text-gray-700 mb-4">
           Uploaded Images
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6">
           {images.length === 0 && (
             <p className="col-span-full text-center text-gray-500">
               No images uploaded yet.
@@ -107,7 +129,7 @@ function App() {
           {images.map((img) => (
             <div key={img.id} className="group">
               <img
-                src={img.thumbnail || placeholder}
+                src={img.thumbnail ?? placeholder}
                 alt={img.originalFilename}
                 className="w-full aspect-square object-cover rounded-md mb-2"
               />

@@ -8,8 +8,6 @@ function initSocket(server) {
       origin: "http://localhost:5173",
     },
   });
-
-  return io;
 }
 
 function getIO() {

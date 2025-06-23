@@ -1,18 +1,22 @@
 import pika
 import json
 from loguru import logger
-from config import RABBITMQ_HOST, RABBITMQ_QUEUE
+from config import RABBITMQ_HOST, RABBITMQ_PROCESSING_QUEUE, RABBITMQ_COMPLETED_QUEUE
 from image_processor import generate_thumbnail
 from db import get_connection
 from datetime import datetime
 
 
-# message = {
+# cosuming_message = {
 #   imageId,
 #   originalPath,
-#   originalFilename
 #   thumbnailPath,
 #   thumbnailFilename,
+# }
+
+# publish_message = {
+#   imageId,
+#   thumbnailFilename
 # }
 
 def callback(ch, method, properties, body):
@@ -21,9 +25,8 @@ def callback(ch, method, properties, body):
 
     image_id = message['imageId']
     input_path = message['originalPath']
-    originalFilename = message['originalFilename']
     output_path = message['thumbnailPath']
-    thumbnailFilename = message['thumbnailFilename']
+    thumbnail_filename = message['thumbnailFilename']
 
     try:
         logger.info(f"Processing image: {input_path}")
@@ -52,8 +55,14 @@ def callback(ch, method, properties, body):
                         thumbnailFilename = %s,
                         thumbnailSize = %s
                     WHERE id = %s
-                """, (datetime.now(), thumbnailFilename, file_size, image_id))
-        
+                """, (datetime.now(), thumbnail_filename, file_size, image_id))
+
+        complete_notification = {
+            "imageId": image_id,
+            "thumbnailFilename": thumbnail_filename
+        }
+        publish_completion_notification(complete_notification)
+
         logger.info(f"Thumbnail created at {output_path} with size {file_size} bytes")
         
     except Exception as e:
@@ -68,7 +77,31 @@ def callback(ch, method, properties, body):
                         errorMessage = %s,
                         completedAt = %s
                     WHERE id = %s
-                """, (str(e), datetime.now(), originalFilename, image_id))
+                """, (str(e), datetime.now(), image_id))
+
+def publish_completion_notification(message):
+    """Publish a message to the thumbnail_completed queue"""
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        channel = connection.channel()
+        
+        # Ensure the queue exists
+        channel.queue_declare(queue=RABBITMQ_COMPLETED_QUEUE, durable=True)
+        
+        # Publish the message
+        channel.basic_publish(
+            exchange='',
+            routing_key=RABBITMQ_COMPLETED_QUEUE,
+            body=json.dumps(message),
+            properties=pika.BasicProperties(
+                delivery_mode=2,  # make message persistent
+            )
+        )
+        
+        logger.info(f"Sent completion notification for image {message['imageId']}")
+        connection.close()
+    except Exception as e:
+        logger.error(f"Failed to send completion notification: {e}")
 
 def main():
     """Main function to set up RabbitMQ consumer"""
@@ -78,13 +111,14 @@ def main():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
     
-    # Declare the queue
-    channel.queue_declare(queue=RABBITMQ_QUEUE, durable=True)
-    
+    # Declare the queues
+    channel.queue_declare(queue=RABBITMQ_PROCESSING_QUEUE, durable=True)
+    channel.queue_declare(queue=RABBITMQ_COMPLETED_QUEUE, durable=True)
+
     # Set up the consumer
-    channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue=RABBITMQ_PROCESSING_QUEUE, on_message_callback=callback, auto_ack=True)
     
-    logger.info(f"Waiting for messages in queue '{RABBITMQ_QUEUE}'...")
+    logger.info(f"Waiting for messages in queue '{RABBITMQ_PROCESSING_QUEUE}'...")
     
     try:
         channel.start_consuming()

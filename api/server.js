@@ -7,14 +7,13 @@ const http = require("http");
 require("dotenv").config();
 
 const { connectDB, pool } = require("./config/database.js");
-const { connectQueue, purgeQueue } = require("./config/message-queue.js");
+const { connectQueue, purgeQueue } = require("./config/job-producer.js");
+const { startConsumer } = require("./config/job-consumer.js");
 
 const PORT = process.env.PORT || 3000;
 
 const app = express();
 const server = http.createServer(app);
-
-const io = initSocket(server);
 
 app.use(
   cors({
@@ -77,6 +76,8 @@ const startServer = async () => {
     console.error("❌ Failed to connect to RabbitMQ. Exiting...");
     process.exit(1);
   }
+  initSocket(server);
+  await startConsumer();
 
   server.listen(PORT, () => {
     console.log(`🚀 Image API server running on port ${PORT}`);

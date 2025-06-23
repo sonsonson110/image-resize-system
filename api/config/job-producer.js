@@ -11,13 +11,16 @@ const connectQueue = async () => {
     channel = await connection.createChannel();
 
     await channel.assertQueue(QUEUE_NAME, {
-      durable: true, // queue will survive RabbitMQ restarts
+      durable: true,
     });
 
-    console.log("✅ Connected to RabbitMQ successfully");
+    console.log(`✅ Connected to ${QUEUE_NAME} queue successfully`);
     return true;
   } catch (error) {
-    console.error("❌ Failed to connect to RabbitMQ:", error.message);
+    console.error(
+      `❌ Failed to connect to ${QUEUE_NAME} queue:`,
+      error.message
+    );
     return false;
   }
 };
@@ -34,10 +37,15 @@ const publishJob = async (job) => {
       { persistent: true } // Message will be saved to disk
     );
 
-    console.log(`🔄 Job queued for processing: ${job.imageId}`);
+    console.log(
+      `🔄 Job queued for processing in ${QUEUE_NAME} queue: ${job.imageId}`
+    );
     return success;
   } catch (error) {
-    console.error("❌ Failed to publish job to queue:", error.message);
+    console.error(
+      `❌ Failed to publish job to ${QUEUE_NAME} queue:`,
+      error.message
+    );
     throw error;
   }
 };
@@ -53,7 +61,7 @@ const purgeQueue = async () => {
       `🧹 Purged queue: ${QUEUE_NAME}, removed ${response.messageCount} messages`
     );
   } catch (error) {
-    console.error("❌ Failed to purge queue:", error.message);
+    console.error(`❌ Failed to purge queue ${QUEUE_NAME}`, error.message);
   }
 };
 

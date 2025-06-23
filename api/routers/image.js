@@ -2,7 +2,7 @@ const router = require("express").Router();
 const multer = require("multer");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-const { publishJob } = require("../config/message-queue.js");
+const { publishJob } = require("../config/job-producer.js");
 const { pool } = require("../config/database.js");
 
 const UPLOADS_ROOT = process.env.UPLOADS_ROOT || "../uploads";
@@ -86,7 +86,6 @@ router.post(
       await publishJob({
         imageId,
         originalPath: filePath,
-        originalFilename: filename,
         thumbnailPath,
         thumbnailFilename,
       });

@@ -52,7 +52,7 @@ const connectDB = async () => {
     client.release();
     return true;
   } catch (error) {
-    console.error("❌ Database connection failed:", error.message);
+    console.error("❌ Database connection failed:", error);
     return false;
   }
 };
