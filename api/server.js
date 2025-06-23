@@ -1,22 +1,27 @@
 const express = require("express");
+const { initSocket } = require("./socket.js");
 const path = require("path");
 const fs = require("fs/promises");
 const cors = require("cors");
+const http = require("http");
 require("dotenv").config();
 
 const { connectDB, pool } = require("./config/database.js");
-const {
-  connectQueue,
-  purgeQueue,
-} = require("./config/message-queue.js");
+const { connectQueue, purgeQueue } = require("./config/message-queue.js");
 
-const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
+const app = express();
+const server = http.createServer(app);
+
+const io = initSocket(server);
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -73,7 +78,7 @@ const startServer = async () => {
     process.exit(1);
   }
 
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`🚀 Image API server running on port ${PORT}`);
     console.log(`📁 Upload directory: ${path.resolve(UPLOADS_ROOT)}/`);
   });

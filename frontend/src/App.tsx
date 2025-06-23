@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { imageApi } from "./api/imageApi";
 import { systemApi } from "./api/systemApi";
 import type { ImageListItem } from "./type/imageItem";
+import socket from "./lib/socket";
 
 const placeholder = "https://placehold.co/128x128";
 
@@ -14,6 +15,12 @@ function App() {
     const repponse = await imageApi.getImages();
     setImages(repponse);
   };
+
+  useEffect(() => {
+    socket.on("connect", () => {
+      console.log("Socket connected");
+    });
+  });
 
   useEffect(() => {
     fetchImages();
@@ -42,9 +49,9 @@ function App() {
     const confirmReset = window.confirm(
       "DANGER: This will delete ALL data from the system. Are you sure you want to proceed?"
     );
-    
+
     if (!confirmReset) return;
-    
+
     try {
       await systemApi.reset();
       window.location.reload();

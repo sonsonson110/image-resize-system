@@ -68,6 +68,7 @@ graph TD
 ## 📋 Prerequisites
 
 - Docker and Docker Compose installed is enough to spin up application
+- For less overhead development, run the front-end locally
 
 ### Local development
 
